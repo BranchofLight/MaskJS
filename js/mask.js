@@ -1,3 +1,8 @@
+// TODO: 
+// - Finish core feature set
+// - Finish features suggested in comments and code below
+// - Add keyup, keydown, focus and focuslost options for mask()
+
 // ? used to denote repetition of part (eg. $0?)
 var rep_char = '?';
 var alpha_char = 'X';
