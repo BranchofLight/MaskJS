@@ -1,7 +1,7 @@
 // TODO:
 // - Finish core feature set
 // - Finish features suggested in comments and code below
-// - Add keyup, keydown, focus and focuslost options for mask()
+// - Add keydown, focus and focuslost options for mask()
 
 // ? used to group a repeating part (eg. $?0?)
 var rep_char = '?';
@@ -72,7 +72,7 @@ var mask = function(input, in_mask, options) {
 		mask_cursor = cursor;
 		checkGroups();
 		checkLiterals();
-	}
+	};
 
   // Checks if c is a special character
   var isSpecialChar = function(c, next) {
@@ -147,11 +147,26 @@ var mask = function(input, in_mask, options) {
       advanceCursor();
     } else if (isDelete(e.key)) {
       if (mask_cursor > 0) {
-				backCursor();
 				buffer = "";
+				var notspecials = 0;
+				// Back cursor before all adjacent not-specials
+				backCursor(); // This moves to the last used character
 				if (options.repeat_start === mask_cursor && input.value.length > options.repeat_start) {
-					// If char deleted is not-special, check to see
+					// If we are at the beginning of the repeat group AND
+					// there is repititions left to delete
+					mask_cursor = options.repeat_end-1;
 				}
+
+				while (!(isSpecialChar(in_mask[mask_cursor], in_mask[mask_cursor+1]))) {
+					var a = isSpecialChar(in_mask[mask_cursor], in_mask[mask_cursor+1]);
+					var b = in_mask[mask_cursor];
+					var c = in_mask[mask_cursor+1];
+					backCursor();
+					notspecials += 1;
+				}
+
+				if (notspecials > 0) e.preventDefault();
+				input.value = input.value.substr(0, input.value.length-notspecials);
       }
     }
 		checkLiterals();
@@ -179,7 +194,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?###,?.##", {
+mask(document.getElementById('money'), "$?###mm,?.##", {
   html_placeholder: "$0.00",
   min: 2,
   default: "$0.00",
