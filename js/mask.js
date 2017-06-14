@@ -1,8 +1,15 @@
-// TODO:
+// TODO: General Unordered
 // - Finish core feature set
 // - Make tabs functional
-// - Finish features suggested in comments and code below
+// - Have focusin place cursor in correct place based on what is already in field
 // - Add keydown, focus and focuslost options for mask()
+// TODO: Specific Ordered
+// - Block if end of mask is non-repetitive
+// - Delete into a previous repeat group
+// - Think about whether or not literals should be typed (probably not)
+// - mask_placeholder
+// - focuslost post mask
+// - End mask event (thrown when mask has been completed -> may not always fire if repeater)
 
 var DEBUG = true;
 
@@ -27,8 +34,6 @@ if (!DEBUG) {
 }
 
 var mask = function(input, in_mask, options) {
-	// Stores literals until they should be drawn
-	// var buffer = "";
 	// Holds the place in the input mask
   var mask_cursor = 0;
 
@@ -56,6 +61,8 @@ var mask = function(input, in_mask, options) {
 				document.getElementById('mask').innerHTML += '<span class="'+i+'">'+in_mask[i]+'</span>';
 			}
 		}
+
+		document.getElementById('mask').innerHTML += '<span class="'+in_mask.length+'"> END</span>';
 	}
 	// Checks in_mask for validity
 	// Throws error if invalid.
@@ -106,27 +113,33 @@ var mask = function(input, in_mask, options) {
 	// Increases the cursor's position
 	var advanceCursor = function(inc) {
 		if (DEBUG) {
-			document.getElementsByClassName('active')[0].nextSibling.classList.add("active");
 			document.getElementsByClassName('active')[0].classList.remove('active');
 		}
 		mask_cursor += (inc) ? inc : 1;
+		if (DEBUG) {
+			document.getElementsByClassName(mask_cursor)[0].classList.add("active");
+		}
 		checkGroups();
 	};
 
 	// Move cursor back by dec / 1
 	var backCursor = function(dec) {
 		if (DEBUG) {
-			document.getElementsByClassName('active')[0].previousSibling.classList.add("active");
-			document.getElementsByClassName('active')[1].classList.remove('active');
+			document.getElementsByClassName('active')[0].classList.remove('active');
 		}
 		mask_cursor -= (dec) ? dec : 1;
+		if (DEBUG) {
+			document.getElementsByClassName(mask_cursor)[0].classList.add("active");
+		}
 	};
 
 	var setCursor = function(cursor) {
+		if (DEBUG) {
+			document.getElementsByClassName('active')[0].classList.remove('active');
+		}
 		mask_cursor = cursor;
 		if (DEBUG) {
 			document.getElementsByClassName(cursor)[0].classList.add("active");
-			document.getElementsByClassName('active')[0].classList.remove('active');
 		}
 	};
 
@@ -136,10 +149,12 @@ var mask = function(input, in_mask, options) {
 		if (in_mask[mask_cursor] === rep_char) {
 			console.log("Repeat character");
 			if (options.repeat_start !== undefined) {
+				if (DEBUG) {
+					document.getElementsByClassName('active')[0].classList.remove('active');
+				}
 				// Inside repeat group, spotted end, set cursor to beginning of group
 				mask_cursor = options.repeat_start;
 				if (DEBUG) {
-					document.getElementsByClassName('active')[0].classList.remove('active');
 					document.getElementsByClassName(options.repeat_start)[0].classList.add("active");
 				}
 			} else {
@@ -181,9 +196,10 @@ var mask = function(input, in_mask, options) {
 			valid = true;
 		}
 
-    if (!valid && e.key !== back_char) {
-      e.preventDefault();
-    } else if (valid) {
+		console.log(mask_cursor + " > " + (in_mask.length-1));
+		if (mask_cursor > in_mask.length-1 && e.key !== back_char) {
+			e.preventDefault();
+		} else if (valid) {
       advanceCursor();
     } else if (e.key === back_char) {
       if (mask_cursor > 0) {
@@ -208,6 +224,13 @@ var mask = function(input, in_mask, options) {
 				// -> -> If yes, go behind end. DONE
 				// -> -> If no, go behind end (this char) and start group. MISSING
       }
+    } else if (e.key === options.group_trigger) {
+			setCursor(options.repeat_end+2);
+			options.group_trigger = undefined;
+			options.repeat_start = undefined;
+			options.repeat_end = undefined;
+		} else if (!valid && e.key !== back_char) {
+      e.preventDefault();
     }
   };
 
@@ -220,8 +243,6 @@ var mask = function(input, in_mask, options) {
 				advanceCursor();
 			}
 		}
-
-		checkGroups();
   };
 
   // Sets input to default if focus is lost before valid input
@@ -236,8 +257,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?###,?.##", {
+mask(document.getElementById('money'), "$?#?.##", {
   html_placeholder: "$0.00",
-  min: 2,
-  default: "$0.00",
+	mask_placeholder: "$?_?.__",
 });
