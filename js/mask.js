@@ -125,8 +125,8 @@ var mask = function(input, in_mask, options) {
 	var setCursor = function(cursor) {
 		mask_cursor = cursor;
 		if (DEBUG) {
-			document.getElementsByClassName('active')[0].previousSibling.classList.add("active");
-			document.getElementsByClassName('active')[1].classList.remove('active');
+			document.getElementsByClassName(cursor)[0].classList.add("active");
+			document.getElementsByClassName('active')[0].classList.remove('active');
 		}
 	};
 
@@ -189,13 +189,11 @@ var mask = function(input, in_mask, options) {
       if (mask_cursor > 0) {
 				if (peekBack() !== rep_char) {
 					backCursor();
-					debugger;
-					if (peekBack() === rep_char) {
-						debugger;
-						if (mask_cursor-1 === options.repeat_start) {
-							setCursor(options.repeat_end-1);
-							debugger;
-						}
+				} else {
+					if (input.value.length > options.repeat_start) {
+						setCursor(options.repeat_end-1);
+					} else {
+						e.preventDefault();
 					}
 				}
 
@@ -206,9 +204,9 @@ var mask = function(input, in_mask, options) {
 				// -> Then check if cursor character is a repeat. (?X#?)YES (?#OX#?)NO DONE
 				// -> If yes, go behind repeat end. (?X#O?) DONE
 				// Repeat character
-				// -> Check if start character
-				// -> -> If yes, go behind end.
-				// -> -> If no, go behind end (this char) and start group.
+				// -> Check if start character DONE
+				// -> -> If yes, go behind end. DONE
+				// -> -> If no, go behind end (this char) and start group. MISSING
       }
     }
   };
@@ -238,7 +236,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?###mm,?.##", {
+mask(document.getElementById('money'), "$?###,?.##", {
   html_placeholder: "$0.00",
   min: 2,
   default: "$0.00",
