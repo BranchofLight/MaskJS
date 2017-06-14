@@ -12,7 +12,7 @@ var alpha_char = 'X';
 var num_char = '#';
 var white_char = '_';
 var escape_char = '\\'; // Not implemented, semi-considered in code
-var deletes = ["Backspace"]; // Removed delete for now
+var back_char = "Backspace";
 
 // Options Object
 // html_placeholder : adds a placeholder attribute to the input on the DOM
@@ -34,7 +34,7 @@ var mask = function(input, in_mask, options) {
 
 	// Checks if c is a special character
   var isSpecialChar = function(c, next) {
-    return ((next != escape_char) && (c === rep_char || c === alpha_char ||
+    return ((next !== escape_char) && (c === rep_char || c === alpha_char ||
            c === white_char || c === num_char || c === escape_char));
   };
 
@@ -42,11 +42,6 @@ var mask = function(input, in_mask, options) {
 	var isCursorSpecial = function() {
 		return isSpecialChar(in_mask[mask_cursor], in_mask[mask_cursor+1]);
 	};
-
-  // Checks if c is a delete character
-  var isDelete = function(c) {
-    return (deletes.indexOf(c) > -1);
-  };
 
 	// Peeks behind the cursor
 	var peekBack = function() {
@@ -68,11 +63,11 @@ var mask = function(input, in_mask, options) {
 		var group = [];
 		var add = false;
 		for (let i = 0; i < in_mask.length; i++) {
-			if (add && !(in_mask[i] === rep_char && in_mask[i+1] != escape_char)) {
+			if (add && !(in_mask[i] === rep_char && in_mask[i+1] !== escape_char)) {
 				group.push(in_mask[i]);
 			}
 
-			if (in_mask[i] === rep_char && in_mask[i+1] != escape_char) {
+			if (in_mask[i] === rep_char && in_mask[i+1] !== escape_char) {
 				if (add) {
 					// Group is finished
 					if (group.indexOf(in_mask[i+1]) > -1) {
@@ -116,7 +111,6 @@ var mask = function(input, in_mask, options) {
 		}
 		mask_cursor += (inc) ? inc : 1;
 		checkGroups();
-		// checkLiterals();
 	};
 
 	// Move cursor back by dec / 1
@@ -130,41 +124,31 @@ var mask = function(input, in_mask, options) {
 
 	var setCursor = function(cursor) {
 		mask_cursor = cursor;
-		checkGroups();
-		// checkLiterals();
+		if (DEBUG) {
+			document.getElementsByClassName('active')[0].previousSibling.classList.add("active");
+			document.getElementsByClassName('active')[1].classList.remove('active');
+		}
 	};
 
-  // Adds literals to buffer if needed
-  // var checkLiterals = function() {
-  //   while (!isCursorSpecial()) {
-  //     buffer += in_mask[mask_cursor];
-	// 		console.log("Added '" + in_mask[mask_cursor] + "' to the buffer.");
-  //     advanceCursor();
-  //   }
-  // };
-
-	// Checks for groups and handles them accordingly
+	// Checks for groups and handles them accordingly from cursor
+	// Call on every cursor move
 	var checkGroups = function() {
-		if (isCursorSpecial()) {
-			switch (in_mask[mask_cursor]) {
-				case rep_char:
-          console.log("Repeat character");
-					if (options.repeat_start != undefined) {
-						// Inside repeat group, spotted end, set cursor to beginning of group
-						mask_cursor = options.repeat_start;
-						if (DEBUG) {
-							document.getElementsByClassName('active')[0].classList.remove('active');
-							document.getElementsByClassName(options.repeat_start)[0].classList.add("active");
-						}
-					} else {
-						// Found start of group
-						options.repeat_start  = mask_cursor;
-						options.repeat_end    = in_mask.indexOf(rep_char, mask_cursor+1);
-						options.group_trigger = in_mask[options.repeat_end+1];
-					}
-					advanceCursor();
-          break;
-      }
+		if (in_mask[mask_cursor] === rep_char) {
+			console.log("Repeat character");
+			if (options.repeat_start !== undefined) {
+				// Inside repeat group, spotted end, set cursor to beginning of group
+				mask_cursor = options.repeat_start;
+				if (DEBUG) {
+					document.getElementsByClassName('active')[0].classList.remove('active');
+					document.getElementsByClassName(options.repeat_start)[0].classList.add("active");
+				}
+			} else {
+				// Found start of group
+				options.repeat_start  = mask_cursor;
+				options.repeat_end    = in_mask.indexOf(rep_char, mask_cursor+1);
+				options.group_trigger = in_mask[options.repeat_end+1];
+			}
+			advanceCursor();
 		}
 	};
 
@@ -197,19 +181,30 @@ var mask = function(input, in_mask, options) {
 			valid = true;
 		}
 
-    if (!valid && !isDelete(e.key)) {
+    if (!valid && e.key !== back_char) {
       e.preventDefault();
     } else if (valid) {
       advanceCursor();
-    } else if (isDelete(e.key)) {
+    } else if (e.key === back_char) {
       if (mask_cursor > 0) {
+				if (peekBack() !== rep_char) {
+					backCursor();
+					debugger;
+					if (peekBack() === rep_char) {
+						debugger;
+						if (mask_cursor-1 === options.repeat_start) {
+							setCursor(options.repeat_end-1);
+							debugger;
+						}
+					}
+				}
 
 				// Guide for what to do based on what the cursor is peeking.
 				// ----------------------------------------------------
 				// Special character OR literal -> X:deleted, O:cursor special, U:cursor literal
-				// -> Delete it. Move cursor back. (?OX#?)
-				// -> Then check if cursor character is a repeat. (?X#?)YES (?#OX#?)NO
-				// -> If yes, go behind repeat end. (?X#O?)
+				// -> Delete it. Move cursor back. (?OX#?) DONE
+				// -> Then check if cursor character is a repeat. (?X#?)YES (?#OX#?)NO DONE
+				// -> If yes, go behind repeat end. (?X#O?) DONE
 				// Repeat character
 				// -> Check if start character
 				// -> -> If yes, go behind end.
