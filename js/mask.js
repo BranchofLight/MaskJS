@@ -260,4 +260,6 @@ var mask = function(input, in_mask, options) {
 mask(document.getElementById('money'), "$?#?.##", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
+	min: 2,
+	default: "$0.00",
 });
