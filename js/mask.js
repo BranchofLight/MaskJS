@@ -1,6 +1,5 @@
 // TODO: Ordered by priority
-// - Delete into a previous repeat group IN PROGRESS
-// - Allow multiple/adjacent repeat groups -> as of now, it would be considered invalid to have '?#??X?'
+// - Allow multiple/adjacent repeat groups -> as of now, it would be considered invalid to have '?#??X?' IN PROGRESS
 // - Solve 'deleting any character other than last' problem (force to last position or allow and solve)
 // - Allow 'Delete' button
 // - Allow tabs for changing focus
@@ -10,6 +9,7 @@
 // - End mask event (thrown when mask has been completed -> may not always fire if repeater)
 // TODO: Finished
 // - Block if end of mask is non-repetitive DONE
+// - Delete into a previous repeat group DONE
 
 var DEBUG = true;
 
@@ -231,6 +231,7 @@ var mask = function(input, in_mask, options) {
 
 		console.log(mask_cursor + " > " + (in_mask.length-1));
 		if (mask_cursor > in_mask.length-1 && e.key !== back_char) {
+			// End of mask
 			e.preventDefault();
 		} else if (valid) {
       advanceCursor();
@@ -245,7 +246,17 @@ var mask = function(input, in_mask, options) {
 					}
 				} else {
 					if (input.value.length > options.repeat_start) {
+						// Repeat group not over.
 						setCursor(options.repeat_end-1);
+					} else if (options.last_start_literal+1 === mask_cursor-1) {
+						// Prevents starting literal deletion
+						// +1 to convert index to length
+						// -1 to assume backspace
+						e.preventDefault();
+					} else {
+						// Character before start is a special character.
+						// Move back once onto start of group and again to pass it.
+						backCursor(2);
 					}
 				}
 
@@ -293,7 +304,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?#?.##", {
+mask(document.getElementById('money'), "#?#?.##", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
 	min: 2,
