@@ -8,6 +8,8 @@
 // - mask_placeholder
 // - focuslost post mask
 // - End mask event (thrown when mask has been completed -> may not always fire if repeater)
+// - optional group, one-or-more group
+// - Implement escape character
 // TODO: Finished
 // - Block if end of mask is non-repetitive DONE
 // - Delete into a previous repeat group DONE
@@ -359,7 +361,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?#?.##", {
+mask(document.getElementById('money'), "$?#??.?", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
 	min: 2,
