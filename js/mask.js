@@ -1,12 +1,15 @@
 // TODO: Ordered by priority
-// - Block if end of mask is non-repetitive DONE
 // - Delete into a previous repeat group IN PROGRESS
+// - Allow multiple/adjacent repeat groups -> as of now, it would be considered invalid to have '?#??X?'
 // - Solve 'deleting any character other than last' problem (force to last position or allow and solve)
+// - Allow 'Delete' button
 // - Allow tabs for changing focus
 // - Think about whether or not literals should be typed (probably not, maybe only for mask_placeholders?)
 // - mask_placeholder
 // - focuslost post mask
 // - End mask event (thrown when mask has been completed -> may not always fire if repeater)
+// TODO: Finished
+// - Block if end of mask is non-repetitive DONE
 
 var DEBUG = true;
 
@@ -66,12 +69,14 @@ var mask = function(input, in_mask, options) {
 	var validate = function() {
 		var group = [];
 		var add = false;
+		var num_repeats = 0;
 		for (let i = 0; i < in_mask.length; i++) {
 			if (add && !(in_mask[i] === rep_char && in_mask[i+1] !== escape_char)) {
 				group.push(in_mask[i]);
 			}
 
 			if (in_mask[i] === rep_char && in_mask[i+1] !== escape_char) {
+				num_repeats += 1;
 				if (add) {
 					// Group is finished
 					if (group.indexOf(in_mask[i+1]) > -1) {
@@ -84,6 +89,17 @@ var mask = function(input, in_mask, options) {
 				}
 				add = !add;
 			}
+
+			if (in_mask[i] === rep_char && in_mask[i+1] === rep_char) {
+				// Cannot have an empty repeat group
+				throw "InvalidMaskError: ["+i+"] is an empty repeat group.";
+			}
+		}
+
+		if (num_repeats%2 !== 0) {
+			// Cannot have an odd number of repeat characters
+			// Indicates a missing close character
+			throw "InvalidMaskError: " + "odd number of repeat group characters.";
 		}
 	}();
 
@@ -141,12 +157,12 @@ var mask = function(input, in_mask, options) {
 		}
 	};
 
-	// Checks for groups and handles them accordingly from cursor
-	// Call on every cursor move
+	// Will handle start/end repeat characters on cursor move.
+	// Call on every cursor move.
 	var checkGroups = function() {
 		if (in_mask[mask_cursor] === rep_char) {
 			console.log("Repeat character");
-			if (options.repeat_start !== undefined) {
+			if (options.repeat_start) {
 				if (DEBUG) {
 					document.getElementsByClassName('active')[0].classList.remove('active');
 				}
@@ -162,6 +178,25 @@ var mask = function(input, in_mask, options) {
 				options.group_trigger = in_mask[options.repeat_end+1];
 			}
 			advanceCursor();
+		}
+	};
+
+	// On backspace, call this to set group.
+	// Once set, checkGroups() handles functionality.
+	// NOTE: This assumes that cursor is moving into a new group and is at end.
+	//       It only guarantees expected functionality if cursor is supposed to
+	//       be in a group. If it is not, this may set an incorrect group.
+	var backGroupSearch = function() {
+		if (in_mask[mask_cursor] === rep_char) {
+			options.repeat_end =    mask_cursor;
+			options.group_trigger = in_mask[mask_cursor+1]; // NOTE: This will not work if next is a new repeat group
+			for (let i = mask_cursor-1; i >= 0; i--) {
+				if (in_mask[i] === rep_char) {
+					// Found start point
+					options.repeat_start = i;
+					break;
+				}
+			}
 		}
 	};
 
@@ -203,11 +238,14 @@ var mask = function(input, in_mask, options) {
       if (mask_cursor > 0) {
 				if (peekBack() !== rep_char) {
 					backCursor();
+					if (peekBack() === rep_char && mask_cursor-1 !== options.repeat_start) {
+						backCursor();
+						backGroupSearch();
+						backCursor();
+					}
 				} else {
 					if (input.value.length > options.repeat_start) {
 						setCursor(options.repeat_end-1);
-					} else {
-						e.preventDefault();
 					}
 				}
 
