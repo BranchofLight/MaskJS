@@ -319,7 +319,7 @@ var mask = function(input, in_mask, options) {
 					}
 				}
 				if (deleteGroup) {
-					deleteGroup.length -= 1;
+					deleteGroup.length -= (deleteGroup.length === 0) ? 0 : 1;
 				}
       }
     } else if (e.key === options.group_trigger) {
