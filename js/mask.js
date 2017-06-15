@@ -1,19 +1,16 @@
-// TODO: General Unordered
-// - Finish core feature set
-// - Make tabs functional
-// - Have focusin place cursor in correct place based on what is already in field
-// - Add keydown, focus and focuslost options for mask()
-// TODO: Specific Ordered
-// - Block if end of mask is non-repetitive
-// - Delete into a previous repeat group
-// - Think about whether or not literals should be typed (probably not)
+// TODO: Ordered by priority
+// - Block if end of mask is non-repetitive DONE
+// - Delete into a previous repeat group IN PROGRESS
+// - Solve 'deleting any character other than last' problem (force to last position or allow and solve)
+// - Allow tabs for changing focus
+// - Think about whether or not literals should be typed (probably not, maybe only for mask_placeholders?)
 // - mask_placeholder
 // - focuslost post mask
 // - End mask event (thrown when mask has been completed -> may not always fire if repeater)
 
 var DEBUG = true;
 
-// ? used to group a repeating part (eg. $?0?)
+// ? used to group a repeating part (eg. $?#?)
 var rep_char = '?';
 var alpha_char = 'X';
 var num_char = '#';
@@ -133,6 +130,7 @@ var mask = function(input, in_mask, options) {
 		}
 	};
 
+	// Move cursor to location
 	var setCursor = function(cursor) {
 		if (DEBUG) {
 			document.getElementsByClassName('active')[0].classList.remove('active');
