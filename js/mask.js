@@ -361,7 +361,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?#??.?", {
+mask(document.getElementById('money'), "$?#?.##", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
 	min: 2,
