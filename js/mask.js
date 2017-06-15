@@ -1,5 +1,6 @@
 // TODO: Ordered by priority
 // - Allow multiple/adjacent repeat groups -> as of now, it would be considered invalid to have '?#??X?' IN PROGRESS
+// - Write unit testing suite
 // - Solve 'deleting any character other than last' problem (force to last position or allow and solve)
 // - Allow 'Delete' button
 // - Allow tabs for changing focus
@@ -36,6 +37,9 @@ if (!DEBUG) {
 var mask = function(input, in_mask, options) {
 	// Holds the place in the input mask
   var mask_cursor = 0;
+	// Used to find how long each repeat group is
+	// Holds objects. {start: index, end: index, length}
+	var groups = [];
 
 	// Checks if c is a special character
   var isSpecialChar = function(c, next) {
@@ -49,8 +53,9 @@ var mask = function(input, in_mask, options) {
 	};
 
 	// Peeks behind the cursor
-	var peekBack = function() {
-		return in_mask[mask_cursor-1];
+	var peekBack = function(peek) {
+		peek = (peek) ? peek : 1;
+		return in_mask[mask_cursor-peek];
 	};
 
 	if (DEBUG) {
@@ -117,6 +122,35 @@ var mask = function(input, in_mask, options) {
 		}
 	}();
 
+	// Initializes groups. Used to determine where cursor is for movement
+	// inside input field.
+	var initGroups = function() {
+		for (let i = 0; i < in_mask.length; i++) {
+			if (in_mask[i] === rep_char) {
+				// If the latest group has had a start initialized but not an end
+				if (groups.length && groups[groups.length-1].start !== undefined && groups[groups.length-1].end === undefined) {
+					groups[groups.length-1].end    = i;
+					groups[groups.length-1].length = 0;
+				} else {
+					groups.push({start: i});
+				}
+			}
+		}
+	}();
+
+	// Returns the current group, if any, the cursor currently belongs to
+	// Counts as within group if on the beginning or end characters of a group
+	// Returns undefined if not inside a group
+	var getCurrentGroup = function() {
+		for (let i = 0; i < groups.length; i++) {
+			if (mask_cursor >= groups[i].start && mask_cursor <= groups[i].end) {
+				return groups[i];
+			}
+		}
+
+		return undefined;
+	};
+
 	if (options) {
   	if (options.html_placeholder) {
     	input.placeholder = options.html_placeholder;
@@ -162,7 +196,8 @@ var mask = function(input, in_mask, options) {
 	var checkGroups = function() {
 		if (in_mask[mask_cursor] === rep_char) {
 			console.log("Repeat character");
-			if (options.repeat_start) {
+			// Must be explicit undefined check as 0 may be a repeat_start value
+			if (options.repeat_start !== undefined) {
 				if (DEBUG) {
 					document.getElementsByClassName('active')[0].classList.remove('active');
 				}
@@ -188,7 +223,7 @@ var mask = function(input, in_mask, options) {
 	//       be in a group. If it is not, this may set an incorrect group.
 	var backGroupSearch = function() {
 		if (in_mask[mask_cursor] === rep_char) {
-			options.repeat_end =    mask_cursor;
+			options.repeat_end    = mask_cursor;
 			options.group_trigger = in_mask[mask_cursor+1]; // NOTE: This will not work if next is a new repeat group
 			for (let i = mask_cursor-1; i >= 0; i--) {
 				if (in_mask[i] === rep_char) {
@@ -229,13 +264,17 @@ var mask = function(input, in_mask, options) {
 			valid = true;
 		}
 
-		console.log(mask_cursor + " > " + (in_mask.length-1));
 		if (mask_cursor > in_mask.length-1 && e.key !== back_char) {
 			// End of mask
 			e.preventDefault();
 		} else if (valid) {
+			// Typical character input. Does not count triggers.
+			if (getCurrentGroup()) {
+				getCurrentGroup().length += 1;
+			}
       advanceCursor();
     } else if (e.key === back_char) {
+			// Backspace
       if (mask_cursor > 0) {
 				if (peekBack() !== rep_char) {
 					backCursor();
@@ -245,38 +284,52 @@ var mask = function(input, in_mask, options) {
 						backCursor();
 					}
 				} else {
-					if (input.value.length > options.repeat_start) {
+					var deleteGroup = undefined;
+					if (getCurrentGroup() && getCurrentGroup().length > 0) {
 						// Repeat group not over.
+						deleteGroup = getCurrentGroup();
 						setCursor(options.repeat_end-1);
-					} else if (options.last_start_literal+1 === mask_cursor-1) {
+					} else if (options.last_start_literal+1 >= input.value.length-1) {
 						// Prevents starting literal deletion
 						// +1 to convert index to length
 						// -1 to assume backspace
 						e.preventDefault();
+					} else if (getCurrentGroup()) {
+						// peekBack char is repeat, check if character before that is as well
+						if (peekBack(2) !== rep_char && getCurrentGroup().length === 0) {
+							// Character before start is a non-repeat character / non-starting literal.
+							// Move back once onto start of group and again to pass it.
+							deleteGroup = getCurrentGroup();
+							backCursor(2);
+							if (peekBack() === rep_char) {
+								// The character being deleted leads into a group
+								backCursor();
+								backGroupSearch();
+								backCursor();
+							}
+						} else {
+							// Current repeat group is empty and another group exists right behind
+						}
 					} else {
-						// Character before start is a special character.
-						// Move back once onto start of group and again to pass it.
-						backCursor(2);
+						// No current group but character before is end of group
+						backCursor();
+						backGroupSearch();
+						backCursor();
+						debugger;
 					}
 				}
-
-				// Guide for what to do based on what the cursor is peeking.
-				// ----------------------------------------------------
-				// Special character OR literal -> X:deleted, O:cursor special, U:cursor literal
-				// -> Delete it. Move cursor back. (?OX#?) DONE
-				// -> Then check if cursor character is a repeat. (?X#?)YES (?#OX#?)NO DONE
-				// -> If yes, go behind repeat end. (?X#O?) DONE
-				// Repeat character
-				// -> Check if start character DONE
-				// -> -> If yes, go behind end. DONE
-				// -> -> If no, go behind end (this char) and start group. MISSING
+				if (deleteGroup) {
+					deleteGroup.length -= 1;
+				}
       }
     } else if (e.key === options.group_trigger) {
 			setCursor(options.repeat_end+2);
 			options.group_trigger = undefined;
 			options.repeat_start = undefined;
 			options.repeat_end = undefined;
+			checkGroups();
 		} else if (!valid && e.key !== back_char) {
+			// Invalid input
       e.preventDefault();
     }
   };
@@ -289,6 +342,9 @@ var mask = function(input, in_mask, options) {
 				input.value += in_mask[i];
 				advanceCursor();
 			}
+		} else {
+			// If no starting literals, may still start with a repeat group
+			checkGroups();
 		}
   };
 
@@ -304,7 +360,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "#?#?.##", {
+mask(document.getElementById('money'), "$?#?.?#?", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
 	min: 2,
