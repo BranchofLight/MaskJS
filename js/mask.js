@@ -97,7 +97,7 @@ var mask = function(input, in_mask, options) {
 
 			if (in_mask[i] === rep_char && in_mask[i+1] === rep_char) {
 				// Cannot have an empty repeat group
-				throw "InvalidMaskError: ["+i+"] is an empty repeat group.";
+				throw "InvalidMaskError: group at ["+i+"] is an empty repeat group.";
 			}
 		}
 
@@ -315,7 +315,6 @@ var mask = function(input, in_mask, options) {
 						backCursor();
 						backGroupSearch();
 						backCursor();
-						debugger;
 					}
 				}
 				if (deleteGroup) {
@@ -360,7 +359,7 @@ var mask = function(input, in_mask, options) {
   input.addEventListener("focusout", focus_lost_listener);
 };
 
-mask(document.getElementById('money'), "$?#?.?#?", {
+mask(document.getElementById('money'), "$?#?.##", {
   html_placeholder: "$0.00",
 	mask_placeholder: "$?_?.__",
 	min: 2,
